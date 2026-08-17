@@ -12,12 +12,18 @@ Some CLI agents ship an official MCP server mode (e.g. `codex mcp-server`), but 
 
 ## Features / 功能
 
-- Single tool `ask-qoder` — delegate a prompt to qodercli
-- 单一工具 `ask-qoder` —— 把任务委托给 qodercli
+- `ask-qoder` tool — delegate a prompt to qodercli
+- `ask-qoder` 工具 —— 把任务委托给 qodercli
 - Structured output (`session_id`, `is_error`, `duration_ms`, `total_credits`, `num_turns`) via `-o json` parsing
 - 结构化输出（`session_id`、`is_error`、`duration_ms`、`total_credits`、`num_turns`），自动解析 `-o json`
 - `list-sessions` tool to discover resumable sessions
 - `list-sessions` 工具，用于发现可续接的会话
+- `list-models` tool for runtime model discovery (no stale model lists)
+- `list-models` 工具，运行时发现可用模型（不依赖过时清单）
+- `reasoning_effort` parameter (`--reasoning-effort`)
+- `reasoning_effort` 参数（透传 `--reasoning-effort`）
+- Server `instructions` in the MCP initialize result guide clients on usage
+- MCP initialize 结果携带服务器使用说明，引导客户端正确调用
 - Codex-style `sandbox` levels (`read-only` / `workspace-write` / `danger-full-access`)
 - 仿 codex 的 `sandbox` 分级（`read-only` / `workspace-write` / `danger-full-access`）
 - System prompt injection (`system_prompt` / `append_system_prompt`)
@@ -105,7 +111,8 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
 |---|---|---|
 | `prompt` | string (required) | The task or question for qodercli / 交给 qodercli 的任务或问题 |
 | `cwd` | string | Working directory / 工作目录 |
-| `model` | string | Model for this session / 本次会话使用的模型 |
+| `model` | string | Model for this session; call `list-models` to discover available names / 本次会话使用的模型，先用 `list-models` 查询 |
+| `reasoning_effort` | string | Reasoning effort level (`--reasoning-effort`), e.g. `low`/`medium`/`high`; depends on the model / 推理强度，取决于模型 |
 | `permission_mode` | enum | `default` \| `accept_edits` \| `bypass_permissions` \| `dont_ask` (default) \| `auto`; mutually exclusive with `approval_policy` / 与 `approval_policy` 互斥 |
 | `approval_policy` | enum | codex-style: `untrusted` \| `on-request` \| `never` (mapped to qodercli permission modes) / 仿 codex 审批策略，自动映射 |
 | `sandbox` | enum | `read-only` \| `workspace-write` \| `danger-full-access` (codex-style) |
@@ -151,6 +158,15 @@ Lists local qodercli sessions (index, summary, session id) so a client can
 pick a `resume_session_id`. Takes no arguments.
 
 列出本地 qodercli 会话（序号、摘要、会话 ID），便于挑选 `resume_session_id`。无参数。
+
+## Tool: `list-models`
+
+Lists models currently supported by qodercli (via `--list-models`), so a
+client can pick a valid `model` value at runtime instead of relying on
+stale knowledge. Returns both a text list and a structured `models` array.
+Takes no arguments.
+
+列出 qodercli 当前支持的模型，供运行时选择有效的 `model` 值（不依赖过时知识）。返回文本清单和结构化 `models` 数组。无参数。
 
 ### Usage Examples / 使用示例
 
@@ -237,8 +253,8 @@ Qoder 会给出安全建议和改进方案。
    复杂任务设置 `timeout_ms`（建议 5–10 分钟），避免挂起
 3. **Resume for multi-turn** — Chain follow-ups via `resume_session_id` instead of repeating context
    后续追问用 `resume_session_id` 续接会话，避免重复上下文
-4. **Model selection** — Larger models like `qwen-plus` or `qwen-max` are better for deep analysis
-   深度分析建议使用 `qwen-plus` / `qwen-max` 等大模型
+4. **Model selection** — Call `list-models` first to discover currently supported models; larger models are better for deep analysis
+   先调 `list-models` 查询当前可用模型；深度分析建议选择大模型
 5. **Permission mode** — the server default `dont_ask` is a conservative headless mode suitable for most delegated analysis; only escalate to `accept_edits`/`bypass_permissions` when the task must edit files or run commands
    服务器默认 `dont_ask` 是适合多数委托分析的保守无头模式；仅当任务需要改文件或跑命令时才升级到 `accept_edits`/`bypass_permissions`
 

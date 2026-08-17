@@ -68,18 +68,32 @@ try {
   if (init.result?.serverInfo?.name !== "qodercli-mcp") {
     fail(`unexpected serverInfo: ${JSON.stringify(init.result?.serverInfo)}`);
   }
+  if (typeof init.result?.instructions !== "string" || !init.result.instructions.includes("list-models")) {
+    fail(`expected server instructions mentioning list-models, got: ${JSON.stringify(init.result?.instructions)}`);
+  }
   console.log("PASS: initialize handshake ->", init.result.serverInfo.name);
 
   notify("notifications/initialized", {});
 
   const tools = await request(2, "tools/list", {});
   const names = (tools.result?.tools ?? []).map((t) => t.name);
-  if (!names.includes("ask-qoder") || !names.includes("list-sessions")) {
-    fail(`expected ask-qoder + list-sessions, got: ${names.join(", ")}`);
+  if (!names.includes("ask-qoder") || !names.includes("list-sessions") || !names.includes("list-models")) {
+    fail(`expected ask-qoder + list-sessions + list-models, got: ${names.join(", ")}`);
   }
   console.log("PASS: tools/list ->", names.join(", "));
 
   if (E2E) {
+    console.log("... invoking list-models end-to-end");
+    const lm = await request(4, "tools/call", {
+      name: "list-models",
+      arguments: {},
+    });
+    const models = lm.result?.structuredContent?.models;
+    if (lm.result?.isError || !Array.isArray(models) || models.length === 0) {
+      fail(`list-models returned no models: ${JSON.stringify(lm.result).slice(0, 200)}`);
+    }
+    console.log("PASS: list-models ->", models.length, "models:", models.slice(0, 5).join(", "), "...");
+
     console.log("... invoking ask-qoder end-to-end (this may take a while)");
     const call = await request(3, "tools/call", {
       name: "ask-qoder",

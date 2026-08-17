@@ -201,6 +201,9 @@ function buildCliArgs(opts) {
   const args = ["-p"];
   if (opts.resume_session_id) args.push("-r", opts.resume_session_id);
   if (opts.model) args.push("-m", opts.model);
+  if (opts.reasoning_effort) {
+    args.push("--reasoning-effort", opts.reasoning_effort);
+  }
   // Resolve the effective permission mode exactly once.
   let permissionMode =
     opts.permission_mode ??
@@ -231,10 +234,21 @@ function buildCliArgs(opts) {
   return args;
 }
 
-const server = new McpServer({
-  name: "qodercli-mcp",
-  version: "0.2.0",
-});
+const server = new McpServer(
+  {
+    name: "qodercli-mcp",
+    version: "0.3.0",
+  },
+  {
+    // Server-level guidance surfaced to clients via the initialize result.
+    instructions:
+      "qodercli-mcp wraps the local qodercli (Qoder CLI) agent. " +
+      "Before choosing a model name, call the list-models tool to get the " +
+      "currently supported models. Use ask-qoder for tasks; its structured " +
+      "output contains session_id — pass it back via resume_session_id for " +
+      "multi-turn follow-ups. Use list-sessions to discover past session ids.",
+  }
+);
 
 const askQoderOutputSchema = {
   session_id: z.string().optional().describe("qodercli session id for follow-ups."),
@@ -263,7 +277,22 @@ server.registerTool(
         .string()
         .optional()
         .describe("Working directory for qodercli (project to operate on)."),
-      model: z.string().optional().describe("Model to use for this session."),
+      model: z
+        .string()
+        .optional()
+        .describe(
+          "Model to use for this session (e.g. 'Auto', 'Ultimate', " +
+            "'Qwen3.8-Max', 'Kimi-K3'). Call the list-models tool first to " +
+            "get the currently supported model names."
+        ),
+      reasoning_effort: z
+        .string()
+        .optional()
+        .describe(
+          "Reasoning effort level passed to --reasoning-effort " +
+            "(e.g. 'low', 'medium', 'high'); supported levels depend on the " +
+            "selected model."
+        ),
       permission_mode: z
         .enum(PERMISSION_MODES)
         .optional()
@@ -406,6 +435,35 @@ server.registerTool(
     return {
       content: [{ type: "text", text }],
       structuredContent: { content: text },
+      isError: !res.ok,
+    };
+  }
+);
+
+server.registerTool(
+  "list-models",
+  {
+    description:
+      "List models currently supported by qodercli. Use this before picking " +
+      "a model name for ask-qoder.",
+    inputSchema: {},
+    outputSchema: {
+      content: z.string().describe("Model names, one per line."),
+      models: z.array(z.string()).describe("Model names as an array."),
+    },
+  },
+  async () => {
+    const res = await runQodercli(["--list-models"], { timeoutMs: 30000 });
+    const raw = (res.stdout.trim() || res.stderr.trim()) ||
+      "[qodercli-mcp] failed to list models";
+    // The CLI prints a "MODEL" header followed by one name per line.
+    const models = res.stdout
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && l !== "MODEL");
+    return {
+      content: [{ type: "text", text: raw }],
+      structuredContent: { content: raw, models },
       isError: !res.ok,
     };
   }
