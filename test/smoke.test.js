@@ -96,6 +96,14 @@ try {
     if (!sc?.session_id || typeof sc.content !== "string") {
       fail(`structured output missing session_id/content: ${JSON.stringify(sc)}`);
     }
+    if (
+      typeof sc.is_error !== "boolean" ||
+      typeof sc.timed_out !== "boolean" ||
+      typeof sc.truncated !== "boolean" ||
+      typeof sc.exit_code !== "number"
+    ) {
+      fail(`structured output field types wrong: ${JSON.stringify(sc)}`);
+    }
     console.log(
       "PASS: ask-qoder end-to-end ->",
       text.slice(0, 120),

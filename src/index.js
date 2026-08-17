@@ -7,12 +7,14 @@
  * inspect local sessions via `list-sessions`.
  *
  * Environment variables:
- *   QODERCLI_PATH       Absolute path to the qodercli binary
- *                       (default: "qodercli" resolved via PATH).
- *   QODERCLI_TIMEOUT_MS Default per-call timeout in milliseconds
- *                       (default: 600000 = 10 minutes).
+ *   QODERCLI_PATH          Absolute path to the qodercli binary
+ *                          (default: "qodercli" resolved via PATH).
+ *   QODERCLI_TIMEOUT_MS    Default per-call timeout in milliseconds
+ *                          (default: 600000 = 10 minutes).
+ *   QODERCLI_MAX_OUTPUT_MB Per-call stdout/stderr cap in MB to protect the
+ *                          long-lived server from OOM (default: 50).
  *   HTTP_PROXY / HTTPS_PROXY  If set, injected into every qodercli
- *                       subprocess so it can use Qoder CLI proxy quota.
+ *                          subprocess so it can use Qoder CLI proxy quota.
  *
  * MIT License. See LICENSE.
  */
@@ -46,6 +48,45 @@ const SANDBOX_MODES = ["read-only", "workspace-write", "danger-full-access"];
 // `qodercli --disallowed-tools` (see README "Sandbox mapping").
 const READ_ONLY_DISALLOWED_TOOLS = ["write_file", "replace", "run_shell_command"];
 
+// Per-call output cap (bytes) protecting the long-lived server from OOM.
+const MAX_OUTPUT_BYTES =
+  (Number(process.env.QODERCLI_MAX_OUTPUT_MB) || 50) * 1024 * 1024;
+
+// Flags with dedicated tool parameters; blocked in extra_args so a
+// prompt-injected client cannot silently override safety-relevant settings.
+const RESERVED_EXTRA_ARGS = new Set([
+  "-p",
+  "--print",
+  "-o",
+  "--output-format",
+  "-r",
+  "--resume",
+  "-m",
+  "--model",
+  "-w",
+  "--cwd",
+  "--permission-mode",
+  "--system-prompt",
+  "--append-system-prompt",
+]);
+
+// codex-style approval policy mapped onto qodercli permission modes.
+const APPROVAL_POLICIES = ["untrusted", "on-request", "never"];
+const APPROVAL_POLICY_MAP = {
+  untrusted: "dont_ask",
+  "on-request": "default",
+  never: "bypass_permissions",
+};
+
+function reservedExtraArg(extraArgs) {
+  if (!extraArgs) return null;
+  for (const a of extraArgs) {
+    const flag = a.split("=")[0];
+    if (RESERVED_EXTRA_ARGS.has(flag)) return flag;
+  }
+  return null;
+}
+
 /**
  * Spawn qodercli and collect its output. Never throws; always resolves
  * with a structured result so the MCP layer can report errors cleanly.
@@ -54,8 +95,11 @@ function runQodercli(args, { cwd, timeoutMs }) {
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
+    let outBytes = 0;
+    let errBytes = 0;
     let settled = false;
     let timedOut = false;
+    let truncated = false;
 
     // Prepare environment with optional proxy support
     const env = {
@@ -71,17 +115,37 @@ function runQodercli(args, { cwd, timeoutMs }) {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
-    const timer = setTimeout(() => {
-      timedOut = true;
+    const killChild = () => {
       try {
         child.kill("SIGKILL");
       } catch {
         /* already dead */
       }
+    };
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killChild();
     }, timeoutMs);
 
-    child.stdout.on("data", (d) => (stdout += d));
-    child.stderr.on("data", (d) => (stderr += d));
+    child.stdout.on("data", (d) => {
+      outBytes += d.length;
+      if (outBytes > MAX_OUTPUT_BYTES) {
+        truncated = true;
+        killChild();
+        return;
+      }
+      stdout += d;
+    });
+    child.stderr.on("data", (d) => {
+      errBytes += d.length;
+      if (errBytes > MAX_OUTPUT_BYTES) {
+        truncated = true;
+        killChild();
+        return;
+      }
+      stderr += d;
+    });
 
     child.on("error", (err) => {
       clearTimeout(timer);
@@ -93,6 +157,7 @@ function runQodercli(args, { cwd, timeoutMs }) {
         stdout,
         stderr: stderr ? `${stderr}\n${String(err)}` : String(err),
         timedOut,
+        truncated,
       });
     });
 
@@ -100,7 +165,7 @@ function runQodercli(args, { cwd, timeoutMs }) {
       clearTimeout(timer);
       if (settled) return;
       settled = true;
-      resolve({ ok: code === 0, code, stdout, stderr, timedOut });
+      resolve({ ok: code === 0, code, stdout, stderr, timedOut, truncated });
     });
   });
 }
@@ -136,13 +201,23 @@ function buildCliArgs(opts) {
   const args = ["-p"];
   if (opts.resume_session_id) args.push("-r", opts.resume_session_id);
   if (opts.model) args.push("-m", opts.model);
-  const permissionSet = Boolean(opts.permission_mode);
-  args.push("--permission-mode", opts.permission_mode ?? DEFAULT_PERMISSION_MODE);
+  // Resolve the effective permission mode exactly once.
+  let permissionMode =
+    opts.permission_mode ??
+    (opts.approval_policy
+      ? APPROVAL_POLICY_MAP[opts.approval_policy]
+      : DEFAULT_PERMISSION_MODE);
+  if (
+    opts.sandbox === "danger-full-access" &&
+    !opts.permission_mode &&
+    !opts.approval_policy
+  ) {
+    // Full access implies no permission prompts.
+    permissionMode = "bypass_permissions";
+  }
+  args.push("--permission-mode", permissionMode);
   if (opts.sandbox === "read-only") {
     args.push("--disallowed-tools", READ_ONLY_DISALLOWED_TOOLS.join(","));
-  } else if (opts.sandbox === "danger-full-access" && !permissionSet) {
-    // Full access implies no permission prompts unless explicitly set.
-    args.push("--permission-mode", "bypass_permissions");
   }
   if (opts.system_prompt) args.push("--system-prompt", opts.system_prompt);
   if (opts.append_system_prompt) {
@@ -170,6 +245,7 @@ const askQoderOutputSchema = {
   total_credits: z.number().optional(),
   num_turns: z.number().optional(),
   timed_out: z.boolean(),
+  truncated: z.boolean(),
 };
 
 server.registerTool(
@@ -191,7 +267,18 @@ server.registerTool(
       permission_mode: z
         .enum(PERMISSION_MODES)
         .optional()
-        .describe(`Permission mode (default: ${DEFAULT_PERMISSION_MODE}).`),
+        .describe(
+          `Permission mode (default: ${DEFAULT_PERMISSION_MODE}). ` +
+            `Mutually exclusive with approval_policy.`
+        ),
+      approval_policy: z
+        .enum(APPROVAL_POLICIES)
+        .optional()
+        .describe(
+          "codex-style approval policy: untrusted->dont_ask, " +
+            "on-request->default, never->bypass_permissions. " +
+            "Mutually exclusive with permission_mode."
+        ),
       sandbox: z
         .enum(SANDBOX_MODES)
         .optional()
@@ -219,7 +306,11 @@ server.registerTool(
       extra_args: z
         .array(z.string())
         .optional()
-        .describe("Additional raw CLI arguments appended before the prompt."),
+        .describe(
+          "Additional raw CLI arguments appended before the prompt. " +
+            "Flags with dedicated parameters (permission mode, system " +
+            "prompt, model, output format, resume, cwd) are rejected."
+        ),
       timeout_ms: z
         .number()
         .int()
@@ -231,6 +322,25 @@ server.registerTool(
     outputSchema: askQoderOutputSchema,
   },
   async (opts) => {
+    if (opts.approval_policy && opts.permission_mode) {
+      const msg =
+        "[qodercli-mcp] approval_policy and permission_mode are mutually exclusive; set only one.";
+      return {
+        content: [{ type: "text", text: msg }],
+        structuredContent: { content: msg, is_error: true, timed_out: false, truncated: false },
+        isError: true,
+      };
+    }
+    const badFlag = reservedExtraArg(opts.extra_args);
+    if (badFlag) {
+      const msg = `[qodercli-mcp] extra_args contains reserved flag "${badFlag}"; use the dedicated parameter instead.`;
+      return {
+        content: [{ type: "text", text: msg }],
+        structuredContent: { content: msg, is_error: true, timed_out: false, truncated: false },
+        isError: true,
+      };
+    }
+
     const args = buildCliArgs(opts);
     const res = await runQodercli(args, {
       cwd: opts.cwd,
@@ -251,11 +361,17 @@ server.registerTool(
       total_credits: parsed?.total_credits,
       num_turns: parsed?.num_turns,
       timed_out: res.timedOut,
+      truncated: res.truncated,
     };
 
     const parts = [];
     if (answer) parts.push(answer);
     if (res.stderr.trim()) parts.push(`[stderr]\n${res.stderr.trim()}`);
+    if (res.truncated) {
+      parts.push(
+        `[qodercli-mcp] output exceeded ${Math.round(MAX_OUTPUT_BYTES / 1024 / 1024)}MB cap; process killed and output truncated`
+      );
+    }
     if (res.timedOut) {
       parts.push(
         `[qodercli-mcp] process killed after ${opts.timeout_ms ?? DEFAULT_TIMEOUT_MS}ms timeout`

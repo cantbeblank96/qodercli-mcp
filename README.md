@@ -58,8 +58,6 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
 
 > **代理支持**：要使用 Qoder CLI 代理额度，可在服务器的环境变量中添加 `HTTP_PROXY` 和/或 `HTTPS_PROXY`。当这些变量在 MCP 服务器级别设置时，它们会被传递到所有 qodercli 子进程。
 
-添加到 `~/.qoder/mcp.json`。建议使用 `node` 的绝对路径并显式设置 `QODERCLI_PATH`（MCP 子进程的 PATH 中经常缺少 nvm 管理的二进制目录）：
-
 ```json
 {
   "mcpServers": {
@@ -108,13 +106,14 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
 | `prompt` | string (required) | The task or question for qodercli / 交给 qodercli 的任务或问题 |
 | `cwd` | string | Working directory / 工作目录 |
 | `model` | string | Model for this session / 本次会话使用的模型 |
-| `permission_mode` | enum | `default` \| `accept_edits` \| `bypass_permissions` \| `dont_ask` (default) \| `auto` |
+| `permission_mode` | enum | `default` \| `accept_edits` \| `bypass_permissions` \| `dont_ask` (default) \| `auto`; mutually exclusive with `approval_policy` / 与 `approval_policy` 互斥 |
+| `approval_policy` | enum | codex-style: `untrusted` \| `on-request` \| `never` (mapped to qodercli permission modes) / 仿 codex 审批策略，自动映射 |
 | `sandbox` | enum | `read-only` \| `workspace-write` \| `danger-full-access` (codex-style) |
 | `system_prompt` | string | Replace the default system prompt / 替换默认系统提示 |
 | `append_system_prompt` | string | Append instructions to the default system prompt / 追加系统提示 |
 | `resume_session_id` | string | Resume a previous session / 续接之前的会话 |
-| `output_format` | string | Passed to `-o` (default `json`) / 透传给 `-o`（默认 `json`） |
-| `extra_args` | string[] | Raw CLI args appended before the prompt / 追加的原始 CLI 参数 |
+| `output_format` | string | Passed to `-o` (default `json`) / 透传给 `-o`（默认 `json`）。Note: non-json formats degrade structured output (`session_id` etc. become unavailable) / 非 json 格式会使结构化字段失效 |
+| `extra_args` | string[] | Raw CLI args appended before the prompt; reserved flags (permission mode, system prompt, model, `-o`, `-r`, `-w`...) are rejected / 追加原始 CLI 参数；保留 flag 会被拒绝 |
 | `timeout_ms` | number | Timeout in ms, default 600000 / 超时毫秒数，默认 600000 |
 
 ### Structured output / 结构化输出
@@ -133,7 +132,8 @@ human-readable text, a `structuredContent` object:
   "duration_ms": 1280,
   "total_credits": 0.53,
   "num_turns": 1,
-  "timed_out": false
+  "timed_out": false,
+  "truncated": false
 }
 ```
 
@@ -143,7 +143,7 @@ human-readable text, a `structuredContent` object:
 |---|---|
 | `read-only` | Adds `--disallowed-tools write_file,replace,run_shell_command` (blocks writes & shell) / 禁用写文件与 shell 工具 |
 | `workspace-write` | Default behavior / 默认行为 |
-| `danger-full-access` | Implies `--permission-mode bypass_permissions` unless `permission_mode` is set / 未显式设置 permission_mode 时等价 bypass_permissions |
+| `danger-full-access` | Implies `--permission-mode bypass_permissions` unless `permission_mode`/`approval_policy` is set / 未显式设置 permission_mode 或 approval_policy 时等价 bypass_permissions |
 
 ## Tool: `list-sessions`
 
@@ -239,8 +239,8 @@ Qoder 会给出安全建议和改进方案。
    后续追问用 `resume_session_id` 续接会话，避免重复上下文
 4. **Model selection** — Larger models like `qwen-plus` or `qwen-max` are better for deep analysis
    深度分析建议使用 `qwen-plus` / `qwen-max` 等大模型
-5. **Permission mode** — `dont_ask` is safest for read-only analysis; use `bypass_permissions` with caution
-   `dont_ask` 适合只读分析；慎用 `bypass_permissions`
+5. **Permission mode** — the server default `dont_ask` is a conservative headless mode suitable for most delegated analysis; only escalate to `accept_edits`/`bypass_permissions` when the task must edit files or run commands
+   服务器默认 `dont_ask` 是适合多数委托分析的保守无头模式；仅当任务需要改文件或跑命令时才升级到 `accept_edits`/`bypass_permissions`
 
 ## Environment variables / 环境变量
 
@@ -248,6 +248,7 @@ Qoder 会给出安全建议和改进方案。
 |---|---|---|
 | `QODERCLI_PATH` | `qodercli` | Path to the qodercli binary / qodercli 二进制路径 |
 | `QODERCLI_TIMEOUT_MS` | `600000` | Default timeout / 默认超时 |
+| `QODERCLI_MAX_OUTPUT_MB` | `50` | Per-call stdout/stderr cap in MB (OOM protection) / 单次调用输出上限（MB，防 OOM） |
 | `HTTP_PROXY` | - | HTTP proxy URL for qodercli / qodercli 的 HTTP 代理地址 |
 | `HTTPS_PROXY` | - | HTTPS proxy URL for qodercli / qodercli 的 HTTPS 代理地址 |
 
