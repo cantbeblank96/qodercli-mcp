@@ -14,12 +14,22 @@ Some CLI agents ship an official MCP server mode (e.g. `codex mcp-server`), but 
 
 - Single tool `ask-qoder` — delegate a prompt to qodercli
 - 单一工具 `ask-qoder` —— 把任务委托给 qodercli
+- Structured output (`session_id`, `is_error`, `duration_ms`, `total_credits`, `num_turns`) via `-o json` parsing
+- 结构化输出（`session_id`、`is_error`、`duration_ms`、`total_credits`、`num_turns`），自动解析 `-o json`
+- `list-sessions` tool to discover resumable sessions
+- `list-sessions` 工具，用于发现可续接的会话
+- Codex-style `sandbox` levels (`read-only` / `workspace-write` / `danger-full-access`)
+- 仿 codex 的 `sandbox` 分级（`read-only` / `workspace-write` / `danger-full-access`）
+- System prompt injection (`system_prompt` / `append_system_prompt`)
+- 系统提示注入（`system_prompt` / `append_system_prompt`）
 - Working directory, model, permission mode, output format control
 - 支持指定工作目录、模型、权限模式、输出格式
 - Session resume (`resume_session_id`) for multi-turn delegation
 - 支持会话续接（`resume_session_id`），可多轮委托
 - Timeout protection with SIGKILL fallback
 - 超时保护（超时自动 SIGKILL）
+- Proxy quota support (`HTTP_PROXY` / `HTTPS_PROXY` injection)
+- 代理额度支持（`HTTP_PROXY` / `HTTPS_PROXY` 注入）
 - Zero build step — plain ESM JavaScript, Node.js >= 18
 - 无需构建 —— 纯 ESM JavaScript，Node.js >= 18
 
@@ -99,10 +109,48 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
 | `cwd` | string | Working directory / 工作目录 |
 | `model` | string | Model for this session / 本次会话使用的模型 |
 | `permission_mode` | enum | `default` \| `accept_edits` \| `bypass_permissions` \| `dont_ask` (default) \| `auto` |
+| `sandbox` | enum | `read-only` \| `workspace-write` \| `danger-full-access` (codex-style) |
+| `system_prompt` | string | Replace the default system prompt / 替换默认系统提示 |
+| `append_system_prompt` | string | Append instructions to the default system prompt / 追加系统提示 |
 | `resume_session_id` | string | Resume a previous session / 续接之前的会话 |
-| `output_format` | string | Passed to `-o` (e.g. `text`, `json`) / 透传给 `-o` |
+| `output_format` | string | Passed to `-o` (default `json`) / 透传给 `-o`（默认 `json`） |
 | `extra_args` | string[] | Raw CLI args appended before the prompt / 追加的原始 CLI 参数 |
 | `timeout_ms` | number | Timeout in ms, default 600000 / 超时毫秒数，默认 600000 |
+
+### Structured output / 结构化输出
+
+`ask-qoder` declares an MCP `outputSchema` and returns, in addition to the
+human-readable text, a `structuredContent` object:
+
+`ask-qoder` 声明了 MCP `outputSchema`，除可读文本外还返回 `structuredContent` 对象：
+
+```json
+{
+  "session_id": "77826b5c-...",   // pass back as resume_session_id / 回传用于续接
+  "content": "OK",
+  "is_error": false,
+  "exit_code": 0,
+  "duration_ms": 1280,
+  "total_credits": 0.53,
+  "num_turns": 1,
+  "timed_out": false
+}
+```
+
+### Sandbox mapping / 沙箱映射
+
+| sandbox | Effect on qodercli / 对 qodercli 的效果 |
+|---|---|
+| `read-only` | Adds `--disallowed-tools write_file,replace,run_shell_command` (blocks writes & shell) / 禁用写文件与 shell 工具 |
+| `workspace-write` | Default behavior / 默认行为 |
+| `danger-full-access` | Implies `--permission-mode bypass_permissions` unless `permission_mode` is set / 未显式设置 permission_mode 时等价 bypass_permissions |
+
+## Tool: `list-sessions`
+
+Lists local qodercli sessions (index, summary, session id) so a client can
+pick a `resume_session_id`. Takes no arguments.
+
+列出本地 qodercli 会话（序号、摘要、会话 ID），便于挑选 `resume_session_id`。无参数。
 
 ### Usage Examples / 使用示例
 
@@ -129,17 +177,21 @@ Qoder 会给出安全建议和改进方案。
 
 #### Example 3: Multi-turn conversation via resume / 多轮对话续接
 ```javascript
-// First call
+// First call — session_id comes back in structuredContent
+// 首次调用 —— session_id 会在 structuredContent 中返回
 { "name": "ask-qoder", "arguments": {
   "prompt": "Help me refactor this module to improve readability",
   "cwd": "/projects/backend",
   "timeout_ms": 300000 
 }}
-// Get session_id from response, then:
+// Then reuse structuredContent.session_id:
+// 然后把 structuredContent.session_id 回传：
 { "name": "ask-qoder", "arguments": {
   "prompt": "Now add error handling for database timeouts",
-  "resume_session_id": "session-xyz-abc-123"
+  "resume_session_id": "77826b5c-cd6b-4213-b423-d95b4e1deab0"
 }}
+// Or discover ids with list-sessions / 或用 list-sessions 查找历史会话 ID
+{ "name": "list-sessions", "arguments": {} }
 ```
 通过 `resume_session_id` 可实现多轮交互式迭代优化。
 
@@ -155,15 +207,16 @@ Qoder 会给出安全建议和改进方案。
 ```
 适合性能分析和优化建议场景。
 
-#### Example 5: Sandbox testing / 沙盒测试
+#### Example 5: Read-only analysis / 只读分析
 ```javascript
 { "name": "ask-qoder", "arguments": {
-  "prompt": "Create a Python script that processes CSV data and generate charts",
-  "extra_args": ["-s"], // -s triggers sandbox mode in newer qodercli versions
-  "timeout_ms": 180000 
+  "prompt": "Audit this codebase for security issues; do not modify anything",
+  "cwd": "/workspaces/repo",
+  "sandbox": "read-only",
+  "timeout_ms": 300000 
 }}
 ```
-注意：`-s` 标志需要较新版本的 qodercli 支持，且沙盒环境可能受限。
+`read-only` 会禁用写文件与 shell 工具，适合审计/评审场景。
 
 #### Example 6: Project-wide analysis / 项目范围分析
 ```javascript

@@ -74,8 +74,8 @@ try {
 
   const tools = await request(2, "tools/list", {});
   const names = (tools.result?.tools ?? []).map((t) => t.name);
-  if (!names.includes("ask-qoder")) {
-    fail(`ask-qoder tool missing, got: ${names.join(", ")}`);
+  if (!names.includes("ask-qoder") || !names.includes("list-sessions")) {
+    fail(`expected ask-qoder + list-sessions, got: ${names.join(", ")}`);
   }
   console.log("PASS: tools/list ->", names.join(", "));
 
@@ -92,7 +92,15 @@ try {
     if (call.result?.isError || !text) {
       fail(`ask-qoder returned error or empty output: ${text}`);
     }
-    console.log("PASS: ask-qoder end-to-end ->", text.slice(0, 200));
+    const sc = call.result?.structuredContent;
+    if (!sc?.session_id || typeof sc.content !== "string") {
+      fail(`structured output missing session_id/content: ${JSON.stringify(sc)}`);
+    }
+    console.log(
+      "PASS: ask-qoder end-to-end ->",
+      text.slice(0, 120),
+      `| session_id=${sc.session_id} credits=${sc.total_credits}`
+    );
   } else {
     console.log("SKIP: end-to-end call (set QODERCLI_MCP_E2E=1 to enable)");
   }
