@@ -1,6 +1,6 @@
 {
   "name": "qodercli-mcp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "MCP server that wraps qodercli (Qoder CLI), letting any MCP client delegate coding tasks to Qoder agents.",
   "type": "module",
   "main": "src/index.js",

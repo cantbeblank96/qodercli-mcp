@@ -269,8 +269,8 @@ Qoder 会给出安全建议和改进方案。
    后续追问用 `resume_session_id` 续接会话，避免重复上下文
 4. **Model selection** — Call `list-models` first to discover currently supported models; larger models are better for deep analysis
    先调 `list-models` 查询当前可用模型；深度分析建议选择大模型
-5. **Permission mode** — The default is read-only (`dont_ask`). Tasks that must create/modify files need `sandbox: "workspace-write"`; shell access needs `danger-full-access`. Do not combine `sandbox` with an explicit `permission_mode` (the latter wins)
-   默认是只读（`dont_ask`）；需要改文件的任务请设 `sandbox: "workspace-write"`，需要 shell 用 `danger-full-access`；勿与显式 `permission_mode` 混用（后者优先生效）
+5. **Permission mode** — The server default is read-only (`dont_ask`); set `QODERCLI_DEFAULT_PERMISSION_MODE=bypass_permissions` to make full (YOLO) access the default for personal deployments. Per-call: tasks that must create/modify files need `sandbox: "workspace-write"`; shell access needs `danger-full-access`. Do not combine `sandbox` with an explicit `permission_mode` (the latter wins)
+   服务器默认只读（`dont_ask`）；个人部署可用 `QODERCLI_DEFAULT_PERMISSION_MODE=bypass_permissions` 将全开（YOLO）设为默认。单次调用：需要改文件设 `sandbox: "workspace-write"`，需要 shell 用 `danger-full-access`；勿与显式 `permission_mode` 混用（后者优先生效）
 
 ## Environment variables / 环境变量
 
@@ -279,6 +279,7 @@ Qoder 会给出安全建议和改进方案。
 | `QODERCLI_PATH` | `qodercli` | Path to the qodercli binary / qodercli 二进制路径 |
 | `QODERCLI_TIMEOUT_MS` | `600000` | Default timeout / 默认超时 |
 | `QODERCLI_MAX_OUTPUT_MB` | `50` | Per-call stdout/stderr cap in MB (OOM protection) / 单次调用输出上限（MB，防 OOM） |
+| `QODERCLI_DEFAULT_PERMISSION_MODE` | `dont_ask` | Default permission mode when the caller omits permission_mode/approval_policy/sandbox; set `bypass_permissions` for full (YOLO) access / 调用方未指定权限参数时的默认模式；设 `bypass_permissions` 即全开（YOLO） |
 | `HTTP_PROXY` | - | HTTP proxy URL for qodercli / qodercli 的 HTTP 代理地址 |
 | `HTTPS_PROXY` | - | HTTPS proxy URL for qodercli / qodercli 的 HTTPS 代理地址 |
 

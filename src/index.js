@@ -13,6 +13,11 @@
  *                          (default: 600000 = 10 minutes).
  *   QODERCLI_MAX_OUTPUT_MB Per-call stdout/stderr cap in MB to protect the
  *                          long-lived server from OOM (default: 50).
+ *   QODERCLI_DEFAULT_PERMISSION_MODE
+ *                          Default permission mode when the caller passes
+ *                          none of permission_mode / approval_policy / sandbox
+ *                          (default: dont_ask, i.e. read-only). Set to
+ *                          bypass_permissions for full (YOLO) access.
  *   HTTP_PROXY / HTTPS_PROXY  If set, injected into every qodercli
  *                          subprocess so it can use Qoder CLI proxy quota.
  *
@@ -27,15 +32,6 @@ import { z } from "zod";
 const QODERCLI_BIN = process.env.QODERCLI_PATH || "qodercli";
 const DEFAULT_TIMEOUT_MS = Number(process.env.QODERCLI_TIMEOUT_MS) || 10 * 60 * 1000;
 const MAX_TIMEOUT_MS = 60 * 60 * 1000;
-// dont_ask is a READ-ONLY mode (verified empirically): it silently denies
-// every tool call that requires permission, so it is headless-safe. It is
-// the conservative default; editing tasks need sandbox=workspace-write.
-const DEFAULT_PERMISSION_MODE = "dont_ask";
-
-// Proxy settings for qodercli via proxy quota
-const HTTP_PROXY = process.env.HTTP_PROXY || null;
-const HTTPS_PROXY = process.env.HTTPS_PROXY || null;
-
 // Verified permission-mode semantics:
 //   dont_ask           read-only; silently denies permission-requiring tools
 //   accept_edits       auto-approves file edits (workspace-write semantics)
@@ -49,6 +45,18 @@ const PERMISSION_MODES = [
   "dont_ask",
   "auto",
 ];
+
+// Effective default permission mode. dont_ask (read-only) is the safe
+// upstream default; deployments that delegate real coding work can opt
+// into bypass_permissions (YOLO) via QODERCLI_DEFAULT_PERMISSION_MODE.
+const envDefaultMode = process.env.QODERCLI_DEFAULT_PERMISSION_MODE;
+const DEFAULT_PERMISSION_MODE = PERMISSION_MODES.includes(envDefaultMode)
+  ? envDefaultMode
+  : "dont_ask";
+
+// Proxy settings for qodercli via proxy quota
+const HTTP_PROXY = process.env.HTTP_PROXY || null;
+const HTTPS_PROXY = process.env.HTTPS_PROXY || null;
 
 // Sandbox modes mirror codex MCP naming for familiarity.
 const SANDBOX_MODES = ["read-only", "workspace-write", "danger-full-access"];
@@ -250,7 +258,7 @@ function buildCliArgs(opts) {
 const server = new McpServer(
   {
     name: "qodercli-mcp",
-    version: "0.4.0",
+    version: "0.4.1",
   },
   {
     // Server-level guidance surfaced to clients via the initialize result.
@@ -260,9 +268,9 @@ const server = new McpServer(
       "currently supported models. Use ask-qoder for tasks; its structured " +
       "output contains session_id — pass it back via resume_session_id for " +
       "multi-turn follow-ups. Use list-sessions to discover past session ids. " +
-      "Permission note: the default is read-only; tasks that must create or " +
-      "modify files need sandbox='workspace-write' (or permission_mode " +
-      "accept_edits), and shell access needs danger-full-access.",
+      `Permission note: the effective default permission mode is ${DEFAULT_PERMISSION_MODE}. ` +
+      "If a task is blocked by permissions, escalate via sandbox=" +
+      "'workspace-write' (file edits) or 'danger-full-access' (shell).",
   }
 );
 
@@ -496,6 +504,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(`[qodercli-mcp] server running on stdio (binary: ${QODERCLI_BIN})`);
+  console.error(`[qodercli-mcp] default permission mode: ${DEFAULT_PERMISSION_MODE}`);
   if (HTTP_PROXY || HTTPS_PROXY) {
     console.error(
       `[qodercli-mcp] Proxy enabled:`,
