@@ -113,9 +113,9 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
 | `cwd` | string | Working directory / 工作目录 |
 | `model` | string | Model for this session; call `list-models` to discover available names / 本次会话使用的模型，先用 `list-models` 查询 |
 | `reasoning_effort` | string | Reasoning effort level (`--reasoning-effort`), e.g. `low`/`medium`/`high`; depends on the model / 推理强度，取决于模型 |
-| `permission_mode` | enum | `default` \| `accept_edits` \| `bypass_permissions` \| `dont_ask` (default) \| `auto`; mutually exclusive with `approval_policy` / 与 `approval_policy` 互斥 |
-| `approval_policy` | enum | codex-style: `untrusted` \| `on-request` \| `never` (mapped to qodercli permission modes) / 仿 codex 审批策略，自动映射 |
-| `sandbox` | enum | `read-only` \| `workspace-write` \| `danger-full-access` (codex-style) |
+| `permission_mode` | enum | `dont_ask` (default, **read-only**) \| `accept_edits` (auto-approve file edits) \| `bypass_permissions` (full access incl. shell) \| `auto` \| `default`; mutually exclusive with `approval_policy`, prefer `sandbox` / 与 `approval_policy` 互斥，推荐用 `sandbox` |
+| `approval_policy` | enum | codex-style: `untrusted`→read-only \| `on-request`→auto \| `never`→full access / 仿 codex 审批策略，自动映射 |
+| `sandbox` | enum | `read-only` \| `workspace-write` \| `danger-full-access` (codex-style; controls the effective permission mode) / 控制实际权限级别 |
 | `system_prompt` | string | Replace the default system prompt / 替换默认系统提示 |
 | `append_system_prompt` | string | Append instructions to the default system prompt / 追加系统提示 |
 | `resume_session_id` | string | Resume a previous session / 续接之前的会话 |
@@ -146,11 +146,25 @@ human-readable text, a `structuredContent` object:
 
 ### Sandbox mapping / 沙箱映射
 
-| sandbox | Effect on qodercli / 对 qodercli 的效果 |
+| sandbox | Effective permission mode / 实际权限模式 | Effect on qodercli / 对 qodercli 的效果 |
+|---|---|---|
+| (omitted / 缺省) | `dont_ask` | Read-only: permission-requiring tools are silently denied / 只读：需授权的工具调用被静默拒绝 |
+| `read-only` | `dont_ask` | Plus `--disallowed-tools write_file,replace,run_shell_command` as defense in depth / 额外禁用写/shell 工具，双保险 |
+| `workspace-write` | `accept_edits` | Agent can create/modify files in `cwd` / 可在 `cwd` 创建/修改文件 |
+| `danger-full-access` | `bypass_permissions` | Full access including shell / 完全权限（含 shell） |
+
+Explicit `permission_mode` or `approval_policy` always wins over `sandbox`.
+显式设置的 `permission_mode` / `approval_policy` 优先于 `sandbox`。
+
+### Permission modes (verified semantics) / 权限模式（实测语义）
+
+| Mode | Behavior / 行为 |
 |---|---|
-| `read-only` | Adds `--disallowed-tools write_file,replace,run_shell_command` (blocks writes & shell) / 禁用写文件与 shell 工具 |
-| `workspace-write` | Default behavior / 默认行为 |
-| `danger-full-access` | Implies `--permission-mode bypass_permissions` unless `permission_mode`/`approval_policy` is set / 未显式设置 permission_mode 或 approval_policy 时等价 bypass_permissions |
+| `dont_ask` | **Read-only**: silently denies every tool call that requires permission. Headless-safe default / 只读：静默拒绝一切需授权的工具调用；无头安全默认值 |
+| `accept_edits` | Auto-approves file edits; shell still governed by policy / 自动批准文件编辑 |
+| `bypass_permissions` | Auto-approves everything including shell / 全部自动批准（含 shell） |
+| `auto` | qodercli's own automatic policy / qodercli 自动策略 |
+| `default` | Interactive confirmation — not headless-friendly, avoid in MCP calls / 交互式确认，无头调用中应避免 |
 
 ## Tool: `list-sessions`
 
@@ -255,8 +269,8 @@ Qoder 会给出安全建议和改进方案。
    后续追问用 `resume_session_id` 续接会话，避免重复上下文
 4. **Model selection** — Call `list-models` first to discover currently supported models; larger models are better for deep analysis
    先调 `list-models` 查询当前可用模型；深度分析建议选择大模型
-5. **Permission mode** — the server default `dont_ask` is a conservative headless mode suitable for most delegated analysis; only escalate to `accept_edits`/`bypass_permissions` when the task must edit files or run commands
-   服务器默认 `dont_ask` 是适合多数委托分析的保守无头模式；仅当任务需要改文件或跑命令时才升级到 `accept_edits`/`bypass_permissions`
+5. **Permission mode** — The default is read-only (`dont_ask`). Tasks that must create/modify files need `sandbox: "workspace-write"`; shell access needs `danger-full-access`. Do not combine `sandbox` with an explicit `permission_mode` (the latter wins)
+   默认是只读（`dont_ask`）；需要改文件的任务请设 `sandbox: "workspace-write"`，需要 shell 用 `danger-full-access`；勿与显式 `permission_mode` 混用（后者优先生效）
 
 ## Environment variables / 环境变量
 

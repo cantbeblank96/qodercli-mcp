@@ -27,12 +27,21 @@ import { z } from "zod";
 const QODERCLI_BIN = process.env.QODERCLI_PATH || "qodercli";
 const DEFAULT_TIMEOUT_MS = Number(process.env.QODERCLI_TIMEOUT_MS) || 10 * 60 * 1000;
 const MAX_TIMEOUT_MS = 60 * 60 * 1000;
+// dont_ask is a READ-ONLY mode (verified empirically): it silently denies
+// every tool call that requires permission, so it is headless-safe. It is
+// the conservative default; editing tasks need sandbox=workspace-write.
 const DEFAULT_PERMISSION_MODE = "dont_ask";
 
 // Proxy settings for qodercli via proxy quota
 const HTTP_PROXY = process.env.HTTP_PROXY || null;
 const HTTPS_PROXY = process.env.HTTPS_PROXY || null;
 
+// Verified permission-mode semantics:
+//   dont_ask           read-only; silently denies permission-requiring tools
+//   accept_edits       auto-approves file edits (workspace-write semantics)
+//   bypass_permissions auto-approves everything including shell
+//   default            interactive confirmation (not headless-friendly)
+//   auto               qodercli's own automatic policy
 const PERMISSION_MODES = [
   "default",
   "accept_edits",
@@ -43,6 +52,14 @@ const PERMISSION_MODES = [
 
 // Sandbox modes mirror codex MCP naming for familiarity.
 const SANDBOX_MODES = ["read-only", "workspace-write", "danger-full-access"];
+
+// Effective permission mode implied by each sandbox level (applied only when
+// neither permission_mode nor approval_policy is set explicitly).
+const SANDBOX_PERMISSION_MAP = {
+  "read-only": "dont_ask",
+  "workspace-write": "accept_edits",
+  "danger-full-access": "bypass_permissions",
+};
 
 // gemini-family write/shell tool names, verified accepted by
 // `qodercli --disallowed-tools` (see README "Sandbox mapping").
@@ -71,10 +88,12 @@ const RESERVED_EXTRA_ARGS = new Set([
 ]);
 
 // codex-style approval policy mapped onto qodercli permission modes.
+// untrusted -> read-only; on-request ~= qodercli automatic policy
+// (headless sessions cannot ask interactively); never -> full access.
 const APPROVAL_POLICIES = ["untrusted", "on-request", "never"];
 const APPROVAL_POLICY_MAP = {
   untrusted: "dont_ask",
-  "on-request": "default",
+  "on-request": "auto",
   never: "bypass_permissions",
 };
 
@@ -204,22 +223,16 @@ function buildCliArgs(opts) {
   if (opts.reasoning_effort) {
     args.push("--reasoning-effort", opts.reasoning_effort);
   }
-  // Resolve the effective permission mode exactly once.
-  let permissionMode =
+  // Resolve the effective permission mode exactly once. Explicit
+  // permission_mode wins, then approval_policy, then the sandbox level,
+  // finally the conservative read-only default.
+  const permissionMode =
     opts.permission_mode ??
-    (opts.approval_policy
-      ? APPROVAL_POLICY_MAP[opts.approval_policy]
-      : DEFAULT_PERMISSION_MODE);
-  if (
-    opts.sandbox === "danger-full-access" &&
-    !opts.permission_mode &&
-    !opts.approval_policy
-  ) {
-    // Full access implies no permission prompts.
-    permissionMode = "bypass_permissions";
-  }
+    (opts.approval_policy ? APPROVAL_POLICY_MAP[opts.approval_policy] : null) ??
+    (opts.sandbox ? SANDBOX_PERMISSION_MAP[opts.sandbox] : null) ??
+    DEFAULT_PERMISSION_MODE;
   args.push("--permission-mode", permissionMode);
-  if (opts.sandbox === "read-only") {
+  if (opts.sandbox === "read-only" && !opts.permission_mode && !opts.approval_policy) {
     args.push("--disallowed-tools", READ_ONLY_DISALLOWED_TOOLS.join(","));
   }
   if (opts.system_prompt) args.push("--system-prompt", opts.system_prompt);
@@ -237,7 +250,7 @@ function buildCliArgs(opts) {
 const server = new McpServer(
   {
     name: "qodercli-mcp",
-    version: "0.3.0",
+    version: "0.4.0",
   },
   {
     // Server-level guidance surfaced to clients via the initialize result.
@@ -246,7 +259,10 @@ const server = new McpServer(
       "Before choosing a model name, call the list-models tool to get the " +
       "currently supported models. Use ask-qoder for tasks; its structured " +
       "output contains session_id — pass it back via resume_session_id for " +
-      "multi-turn follow-ups. Use list-sessions to discover past session ids.",
+      "multi-turn follow-ups. Use list-sessions to discover past session ids. " +
+      "Permission note: the default is read-only; tasks that must create or " +
+      "modify files need sandbox='workspace-write' (or permission_mode " +
+      "accept_edits), and shell access needs danger-full-access.",
   }
 );
 
@@ -298,23 +314,30 @@ server.registerTool(
         .optional()
         .describe(
           `Permission mode (default: ${DEFAULT_PERMISSION_MODE}). ` +
-            `Mutually exclusive with approval_policy.`
+            `dont_ask = READ-ONLY (silently denies edits/shell); ` +
+            `accept_edits = auto-approve file edits; ` +
+            `bypass_permissions = full access incl. shell; ` +
+            `auto = qodercli's automatic policy. ` +
+            `Mutually exclusive with approval_policy; prefer the sandbox ` +
+            `parameter instead.`
         ),
       approval_policy: z
         .enum(APPROVAL_POLICIES)
         .optional()
         .describe(
-          "codex-style approval policy: untrusted->dont_ask, " +
-            "on-request->default, never->bypass_permissions. " +
+          "codex-style approval policy: untrusted->dont_ask (read-only), " +
+            "on-request->auto, never->bypass_permissions. " +
             "Mutually exclusive with permission_mode."
         ),
       sandbox: z
         .enum(SANDBOX_MODES)
         .optional()
         .describe(
-          "Sandbox level, codex-style: read-only blocks write/shell tools; " +
-            "workspace-write is the default behavior; danger-full-access " +
-            "implies bypass_permissions unless permission_mode is set."
+          "Sandbox level, codex-style: read-only = dont_ask + blocked " +
+            "write/shell tools; workspace-write = accept_edits (agent can " +
+            "create/modify files in cwd); danger-full-access = " +
+            "bypass_permissions. Ignored when permission_mode or " +
+            "approval_policy is set. Default (when omitted) is read-only."
         ),
       system_prompt: z
         .string()

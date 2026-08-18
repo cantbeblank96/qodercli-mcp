@@ -8,6 +8,8 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SERVER = join(ROOT, "src", "index.js");
@@ -123,6 +125,33 @@ try {
       text.slice(0, 120),
       `| session_id=${sc.session_id} credits=${sc.total_credits}`
     );
+
+    // Regression test: sandbox=workspace-write must grant edit capability
+    // (previously it stayed in the read-only dont_ask mode).
+    const writeDir = join(tmpdir(), "qodercli-mcp-smoke");
+    mkdirSync(writeDir, { recursive: true });
+    const marker = join(writeDir, ".qodercli-mcp-write-test.txt");
+    rmSync(marker, { force: true });
+    console.log("... invoking ask-qoder write test (sandbox=workspace-write)");
+    const writeCall = await request(5, "tools/call", {
+      name: "ask-qoder",
+      arguments: {
+        prompt:
+          `Create a file named .qodercli-mcp-write-test.txt in the current ` +
+          `working directory containing exactly the word SMOKE. No other actions.`,
+        cwd: writeDir,
+        sandbox: "workspace-write",
+        timeout_ms: 300000,
+      },
+    });
+    if (writeCall.result?.isError) {
+      fail(`workspace-write call errored: ${(writeCall.result?.content?.[0]?.text ?? "").slice(0, 200)}`);
+    }
+    if (!existsSync(marker)) {
+      fail(`sandbox=workspace-write did not allow writing: ${marker} missing`);
+    }
+    rmSync(marker, { force: true });
+    console.log("PASS: sandbox=workspace-write allows file creation");
   } else {
     console.log("SKIP: end-to-end call (set QODERCLI_MCP_E2E=1 to enable)");
   }
