@@ -46,6 +46,15 @@ Some CLI agents ship an official MCP server mode (e.g. `codex mcp-server`), but 
 
 ## Install / 安装
 
+**Option A — npx (recommended / 推荐)**: no clone needed, the MCP client downloads the package on first use.
+无需克隆，MCP 客户端首次使用时自动下载：
+
+```json
+"command": "npx", "args": ["-y", "qodercli-mcp"]
+```
+
+**Option B — from source (for development / 开发用)**:
+
 ```bash
 git clone https://github.com/cantbeblank96/qodercli-mcp.git
 cd qodercli-mcp
@@ -68,16 +77,16 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
 {
   "mcpServers": {
     "qodercli-mcp": {
-      "command": "/absolute/path/to/node",
-      "args": ["/absolute/path/to/qodercli-mcp/src/index.js"],
+      "command": "npx",
+      "args": ["-y", "qodercli-mcp"],
       "env": {
         "QODERCLI_PATH": "/absolute/path/to/qodercli",
         "PATH": "/usr/local/bin:/usr/bin:/bin"
       }
     },
     "qodercli-mcp-with-proxy": {
-      "command": "/absolute/path/to/node",
-      "args": ["/absolute/path/to/qodercli-mcp/src/index.js"],
+      "command": "npx",
+      "args": ["-y", "qodercli-mcp"],
       "env": {
         "QODERCLI_PATH": "/absolute/path/to/qodercli",
         "HTTP_PROXY": "http://127.0.0.1:39900",
@@ -88,6 +97,9 @@ Add to `~/.qoder/mcp.json`. Prefer the absolute path of `node` and set `QODERCLI
   }
 }
 ```
+
+Developers running a local checkout instead of the published package (Option B) should replace `command`/`args` with the absolute `node` path and `/path/to/qodercli-mcp/src/index.js` (nvm-managed `node` is often missing from the PATH seen by MCP child processes).
+使用本地源码（方式 B）的开发者请将 `command`/`args` 换成 `node` 绝对路径与 `/path/to/qodercli-mcp/src/index.js`（MCP 子进程的 PATH 中经常缺少 nvm 管理的二进制目录）。
 
 ### Claude Code / Claude Desktop
 
