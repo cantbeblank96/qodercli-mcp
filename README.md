@@ -47,7 +47,7 @@ Some CLI agents ship an official MCP server mode (e.g. `codex mcp-server`), but 
 ## Install / 安装
 
 ```bash
-git clone https://github.com/your-username/qodercli-mcp.git
+git clone https://github.com/cantbeblank96/qodercli-mcp.git
 cd qodercli-mcp
 npm install
 ```
