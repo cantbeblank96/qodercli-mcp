@@ -5,6 +5,8 @@
 
 ## 1. punkpeye/awesome-mcp-servers（最大列表）
 
+- ✅ **2026-08-20 已提 PR：https://github.com/punkpeye/awesome-mcp-servers/pull/12527**
+  （插在 Coding Agents 分区 djerok/glm-mcp 之后；标题带 🤖🤖🤖 走官方 agent 快速通道）
 - 仓库：https://github.com/punkpeye/awesome-mcp-servers
 - 流程：fork → 按 CONTRIBUTING 模板在合适分类（建议 Developer Tools / Coding Agents 相关分区）加一行 → PR。
 - 条目文案（一行，照列表格式）：
@@ -18,7 +20,9 @@
 ## 2. wong2/awesome-mcp-servers（华语圈）
 
 - 仓库：https://github.com/wong2/awesome-mcp-servers
-- 条目文案：
+- ❌ **2026-08-20 实测：该仓库关闭了 fork PR（CreatePullRequest 权限拒绝）且 issues 关闭**，无提交通道。
+  文案已备好，若日后重开可直接用；华语圈覆盖改由 Phase 3（V2EX/掘金/知乎）承担。
+- 条目文案（备用）：
 
 ```markdown
 - [qodercli-mcp](https://github.com/cantbeblank96/qodercli-mcp) - 给 Qoder CLI 补上 MCP server 模式：任意 MCP 客户端可把任务委托给本地 Qoder Agent，`npx -y qodercli-mcp` 零配置，权限语义实测文档化。
