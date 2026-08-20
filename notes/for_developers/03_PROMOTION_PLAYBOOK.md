@@ -57,7 +57,9 @@
 仓库：[kostja94/marketing-skills](https://github.com/kostja94/marketing-skills)（MIT，160+ 纯 Markdown skill，无执行代码）。
 
 ```bash
-npx skills add kostja94/marketing-skills --skill cold-start-strategy directory-submission github launch x reddit indie-hacker-strategy
+# 实测 2026-08：skill 名为 product-hunt-launch / twitter-x-posts / reddit-posts（原手册 x/reddit/launch 不存在）；
+# 交互式 agent 选择可用 -a '*' -y 跳过；安装产物在 .agents/（已 gitignore）
+npx --yes skills add kostja94/marketing-skills --skill cold-start-strategy directory-submission github product-hunt-launch twitter-x-posts reddit-posts indie-hacker-strategy -a '*' -y
 ```
 
 | Skill | 对应阶段 | 产出 |

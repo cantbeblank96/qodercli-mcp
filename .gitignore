@@ -3,3 +3,9 @@ npm-debug.log*
 *.log
 .DS_Store
 .env
+
+# agent-installed marketing skills (local tooling, not part of the package)
+.agents/
+.claude/
+agent/
+skills-lock.json
