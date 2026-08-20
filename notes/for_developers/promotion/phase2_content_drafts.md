@@ -9,7 +9,7 @@
 **标题**：
 
 ```
-Show HN: qodercli-mcp – MCP server mode for the Qoder CLI
+Show HN: qodercli-mcp – MCP server mode for the Qoder CLI (I built it)
 ```
 
 **正文**：
@@ -31,7 +31,7 @@ verified what each mode really does — e.g. `dont_ask` is not "approve
 everything", it's read-only with silent denials. That's documented in the
 repo, because guessing here is how agents delete your files.
 
-Zero-config, MIT, npm-published, listed in the official MCP Registry.
+*Zero-config, MIT, npm-published, listed in the official MCP Registry. I'm the author.*
 
 Repo: https://github.com/cantbeblank96/qodercli-mcp
 npm:  https://www.npmjs.com/package/qodercli-mcp
@@ -44,7 +44,7 @@ around other CLIs.
 
 ### r/mcp（flair: Project / Showcase，按侧栏自查）
 
-**标题**：`I wrapped a CLI coding agent (Qoder CLI) as an MCP server — and experimentally verified its permission semantics`
+**标题**：`I tested my CLI agent's permission modes — here's what dont_ask *really* does`
 
 **正文**：
 
@@ -74,14 +74,15 @@ would you want a delegating server to enforce by default?
 
 **标题**：`Turning terminal coding agents into MCP servers: what works, what silently doesn't`
 
-**正文**：
+**正文**:
 
 ```
-I maintain qodercli-mcp, a tiny wrapper that gives Qoder CLI an MCP server
+I built qodercli-mcp, a tiny wrapper that gives Qoder CLI an MCP server
 mode (the way Codex has one officially). One CLI, callable from Cursor,
 Claude Code, any MCP client.
 
 Two things surprised me building it:
+```
 
 1. CLI agents make great MCP *clients* but almost none ship a server mode —
    the ecosystem gap is real.
@@ -98,11 +99,13 @@ is terminal-only the point? Curious how others wire this up.
 
 ### r/opensource（透明自荐 + 求 review）
 
-**标题**：`[Self-promotion] qodercli-mcp: a 500-line MCP server that gives Qoder CLI a server mode — looking for brutal review`
+**标题**：`[Self-promotion] qodercli-mcp: a tiny MCP server that gives Qoder CLI a server mode — looking for honest review`
 
-**正文**：
+**正文**:
 
 ```
+Built by me. qodercli-mcp wraps the Qoder CLI as an MCP server so any MCP
+client can delegate coding tasks to it. Single file, pure ESM, no build step,
 Author here. qodercli-mcp wraps the Qoder CLI as an MCP server so any MCP
 client can delegate coding tasks to it. Single file, pure ESM, no build step,
 MIT, on npm (`npx -y qodercli-mcp`).
@@ -120,15 +123,17 @@ list-models) is the right split.
 GitHub: https://github.com/cantbeblank96/qodercli-mcp
 ```
 
-### r/LocalLLaMA（讨论向，不硬推）
+**标题**：`Delegating from MCP clients to local CLI coding agents over MCP — anyone else building this locally?`
 
-**标题**：`Delegating from MCP clients to CLI coding agents: anyone else building this pattern locally?`
-
-**正文**：
+**正文**:
 
 ```
 I've been running CLI coding agents as delegated workers behind MCP servers
-(my project qodercli-mcp does this for Qoder CLI), and the pattern that
+(my project **qodercli-mcp** does this for Qoder CLI, **runs entirely on your machine**, local model), and the pattern that
+
+```
+I've been running CLI coding agents as delegated workers behind MCP servers
+(my project **qodercli-mcp** does this for Qoder CLI, **runs entirely on your machine**, local model), and the pattern that
 emerged is: editor/agent as orchestrator → CLI agent as sandboxed worker →
 session resume for multi-turn work.
 
@@ -154,10 +159,16 @@ MCP? What's your sandbox setup — the codex-style levels or something stricter?
 Codex has an official MCP server mode.
 Qoder CLI didn't.
 
-So I built one: qodercli-mcp — your terminal coding agent, callable from
-any MCP client.
+I built qodercli-mcp in ~2 weeks to give Qoder CLI a server mode —
+one npx command, and any MCP client can delegate real coding tasks.
 
 [附 demo GIF]
+
+...
+5/5
+If your editor could delegate to a CLI agent today, what would you hand off first?
+
+(Repo + npm link in reply 👇 | **built by me**)  #MCP #AIAgents
 
 2/5
 Three tools over stdio:
@@ -184,18 +195,13 @@ Distribution done properly:
 ✓ official MCP Registry
 ✓ Smithery (MCPB bundle)
 ✓ Glama
-✓ awesome-mcp-servers PR
+✓ awesome-mcp-servers PR **(in progress)**
 
 One CLI, discoverable everywhere MCP clients look.
 
-5/5
-If your editor could delegate to a CLI agent today, what would you hand off
-first?
-
-(Repo + npm link in reply 👇)  #MCP #AIAgents
 ```
 
-**回复（挂链接）**：
+**回复（挂链接）：**
 
 ```
 https://github.com/cantbeblank96/qodercli-mcp
@@ -206,7 +212,8 @@ https://www.npmjs.com/package/qodercli-mcp
 
 **Tagline 候选（≤60 字符）**：
 
-1. `Delegate coding tasks to Qoder agents from any MCP client`（58）
+1. `Delegate coding tasks to Qoder agents from any MCP client`（58）→ 改为：
+   `Delegate coding tasks to Qoder from any MCP client`（52）
 2. `The missing MCP server mode for Qoder CLI`（42）
 3. `Your terminal coding agent, callable from anywhere`（50）
 
@@ -226,8 +233,7 @@ MCP client can delegate real coding tasks to a local Qoder agent, resume
 sessions, and discover models at runtime.
 
 The detail I'm proudest of: every permission mode is documented with
-experimental evidence (our "dont_ask is read-only" finding surprised a lot of
-people). Agents that guess permissions delete files; this one doesn't guess.
+experimental evidence (**dont_ask = read-only**). Pick the trust level explicitly.
 
 Ask me anything — especially about sandboxing delegated agents.
 ```
@@ -261,4 +267,4 @@ demo 视频 <2min 可选（现有 GIF 可转 mp4）。
 1. 周二：Show HN（9–11 PT）+ X 线程同窗口。
 2. 周三：Reddit 两版（r/mcp、r/commandline），周四另两版（错开，避免连发同款）。
 3. PH 单独选一个周二 00:01 PT，与 HN 错周。
-4. 度量：帖子存活/评论数、stars 周增、npm weekly downloads；2 周内每周复盘。
+4. 度量：帖子存活/评论数、stars 周增、npm weekly downloads；建议延长至 4 周复盘周期（含负向指标：issue 率、安装失败率）。
