@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.cantbeblank96/qodercli-mcp",
+  "description": "MCP server mode for Qoder CLI — delegate coding tasks to local Qoder agents from any MCP client.",
+  "repository": {
+    "url": "https://github.com/cantbeblank96/qodercli-mcp",
+    "source": "github"
+  },
+  "version": "0.4.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "qodercli-mcp",
+      "version": "0.4.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "QODERCLI_PATH",
+          "description": "Absolute path to the qodercli binary (defaults to `qodercli` on PATH)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "QODERCLI_DEFAULT_PERMISSION_MODE",
+          "description": "Default permission mode when callers omit permission params: dont_ask (default, read-only) | accept_edits | bypass_permissions | auto | default",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "HTTP_PROXY",
+          "description": "HTTP proxy injected into qodercli subprocesses (optional)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "HTTPS_PROXY",
+          "description": "HTTPS proxy injected into qodercli subprocesses (optional)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

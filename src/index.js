@@ -258,7 +258,7 @@ function buildCliArgs(opts) {
 const server = new McpServer(
   {
     name: "qodercli-mcp",
-    version: "0.4.2",
+    version: "0.4.3",
   },
   {
     // Server-level guidance surfaced to clients via the initialize result.

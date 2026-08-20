@@ -65,6 +65,7 @@ qodercli-mcp/
 | v0.4.1 | `b035d67` | `QODERCLI_DEFAULT_PERMISSION_MODE` 可配置默认权限（YOLO 默认） |
 | - | `8d1a255` | 仓库占位符替换为真实 GitHub 地址 |
 | v0.4.2 | `e4458f7` | npx 安装方式作为推荐路径；配置示例改用 npx |
+| v0.4.3 | - | 官方 MCP Registry 收录：package.json 加 `mcpName`（registry 所有权验证必需） |
 
 ## 7. 本机部署现状（维护者机器）
 
