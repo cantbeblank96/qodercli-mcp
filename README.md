@@ -11,9 +11,9 @@
 
 一个极简的 MCP server，把本地的 qodercli（Qoder CLI）包装成 MCP 工具，让任意 MCP 客户端（Qoder IDE、Claude Code、Cursor 等）可以像调用子 Agent 一样调用 Qoder。
 
-<!-- TODO(promotion phase 0): record 30s demo GIF with notes/for_developers/demo/record.sh,
-     commit to docs/demo.gif, then uncomment:
-![demo](docs/demo.gif) -->
+![demo](docs/demo.gif)
+
+*30s demo: MCP client ⇄ qodercli-mcp ⇄ qodercli — initialize → tools/list → list-models（真实输出，非加速）*
 
 ## Quick start / 快速开始
 
