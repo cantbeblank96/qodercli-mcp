@@ -1,8 +1,41 @@
 # qodercli-mcp
 
-> A minimal MCP server that wraps [qodercli](https://qoder.com/cli) (Qoder CLI), letting any MCP client delegate coding tasks to a local Qoder agent.
+[![npm version](https://img.shields.io/npm/v/qodercli-mcp)](https://www.npmjs.com/package/qodercli-mcp)
+[![npm downloads](https://img.shields.io/npm/dw/qodercli-mcp)](https://www.npmjs.com/package/qodercli-mcp)
+[![License: MIT](https://img.shields.io/github/license/cantbeblank96/qodercli-mcp)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/cantbeblank96/qodercli-mcp?style=social)](https://github.com/cantbeblank96/qodercli-mcp)
+
+> **The missing MCP server mode for Qoder CLI** — delegate coding tasks to local Qoder agents from any MCP client (Qoder IDE, Claude Code, Cursor…).
+>
+> **给 Qoder CLI 补上 MCP server 模式**：让任意 MCP 客户端把任务委托给本地 Qoder Agent。
 
 一个极简的 MCP server，把本地的 qodercli（Qoder CLI）包装成 MCP 工具，让任意 MCP 客户端（Qoder IDE、Claude Code、Cursor 等）可以像调用子 Agent 一样调用 Qoder。
+
+<!-- TODO(promotion phase 0): record 30s demo GIF with notes/for_developers/demo/record.sh,
+     commit to docs/demo.gif, then uncomment:
+![demo](docs/demo.gif) -->
+
+## Quick start / 快速开始
+
+Zero-config via npx — add this to your MCP client config (`~/.qoder/mcp.json`, `claude_desktop_config.json`, …):
+零配置：把下面这段加进你的 MCP 客户端配置即可：
+
+```json
+{ "mcpServers": { "qodercli-mcp": { "command": "npx", "args": ["-y", "qodercli-mcp"] } } }
+```
+
+Three tools are exposed / 提供三个工具：
+
+| Tool | Purpose / 用途 |
+|---|---|
+| `ask-qoder` | Delegate a task to qodercli / 委托任务给 qodercli |
+| `list-sessions` | Discover resumable sessions / 发现可续接的历史会话 |
+| `list-models` | Runtime model discovery / 运行时查询可用模型 |
+
+Highlights / 亮点：**verified permission semantics** (see below — e.g. `dont_ask` is read-only)
+实测权限语义文档化 · codex 风格 `sandbox`/`approval_policy` · 结构化输出（session_id/duration_ms/total_credits）。
+
+Full configuration options are in [Install](#install--安装) / 完整配置见下方 [安装](#install--安装)。
 
 ## Why / 为什么
 

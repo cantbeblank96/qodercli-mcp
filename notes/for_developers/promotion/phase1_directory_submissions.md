@@ -1,0 +1,84 @@
+# Phase 1 — 目录收录素材包（即用文案）
+
+> 状态追踪在 `project-context.md` 的 Channels 表。提交后回填 ⬜→✅ 并记日期。
+> 合规：各平台 self-promotion 版规先读后发；PR 里按模板披露作者身份。
+
+## 1. punkpeye/awesome-mcp-servers（最大列表）
+
+- 仓库：https://github.com/punkpeye/awesome-mcp-servers
+- 流程：fork → 按 CONTRIBUTING 模板在合适分类（建议 Developer Tools / Coding Agents 相关分区）加一行 → PR。
+- 条目文案（一行，照列表格式）：
+
+```markdown
+**[qodercli-mcp](https://github.com/cantbeblank96/qodercli-mcp)** - MCP server mode for Qoder CLI: delegate coding tasks to a local Qoder agent from any MCP client. Zero-config via `npx -y qodercli-mcp`; codex-style sandbox levels; verified permission semantics.
+```
+
+- PR 描述要点：填补缺口（codex 有官方 server 模式，qodercli 没有）；npm 已发布；MIT。
+
+## 2. wong2/awesome-mcp-servers（华语圈）
+
+- 仓库：https://github.com/wong2/awesome-mcp-servers
+- 条目文案：
+
+```markdown
+- [qodercli-mcp](https://github.com/cantbeblank96/qodercli-mcp) - 给 Qoder CLI 补上 MCP server 模式：任意 MCP 客户端可把任务委托给本地 Qoder Agent，`npx -y qodercli-mcp` 零配置，权限语义实测文档化。
+```
+
+## 3. Smithery（smithery.ai）
+
+- 仓库根目录已放 `smithery.yaml`（stdio + npx 启动），爬虫会自动收录；
+- 若未自动出现：到 smithery.ai 用 GitHub 仓库 URL 手动提交（Submit a Server）。
+- 描述文案（280 字符内）：
+
+```
+MCP server mode for Qoder CLI — delegate coding tasks to a local Qoder agent from any MCP client. Zero-config: npx -y qodercli-mcp. Codex-style sandbox/approval_policy, runtime model discovery, verified permission semantics.
+```
+
+## 4. Glama（glama.ai/mcp/servers）
+
+- 提交入口：glama.ai/mcp/servers → Submit；GitHub URL 即可，自动验证安装。
+- Short description：
+
+```
+Wraps qodercli (Qoder CLI) as an MCP server: any MCP client can delegate coding tasks to a local Qoder agent with structured results.
+```
+
+- Tags 建议：`cli`, `coding`, `agent`, `qoder`, `delegation`, `stdio`
+
+## 5. MCP.so / PulseMCP（pulsemcp.com）
+
+- 均为表单提交（GitHub URL + npm URL + 简介）。简介通用版：
+
+```
+qodercli-mcp is the missing MCP server mode for Qoder CLI. It exposes three tools —
+ask-qoder (delegate a task with codex-style sandbox levels), list-sessions (resume
+multi-turn delegation), and list-models (runtime model discovery) — over MCP stdio.
+Zero-config install: npx -y qodercli-mcp. Permission semantics are experimentally
+verified and documented (e.g. dont_ask is read-only).
+```
+
+## 6. 官方 MCP Registry（modelcontextprotocol/registry）
+
+- 流程：注册 https://registry.modelcontextprotocol.io（或向 modelcontextprotocol/registry 仓库提 PR），
+  提交 server 元数据。核心字段：
+
+```json
+{
+  "name": "io.github.cantbeblank96/qodercli-mcp",
+  "description": "MCP server mode for Qoder CLI — delegate coding tasks to a local Qoder agent from any MCP client.",
+  "repository": { "url": "https://github.com/cantbeblank96/qodercli-mcp", "source": "github" },
+  "packages": [{
+    "registry_name": "npm",
+    "name": "qodercli-mcp",
+    "version": "0.4.2",
+    "runtime": "node",
+    "transport": "stdio"
+  }]
+}
+```
+
+## 提交顺序建议（当天可完成）
+
+1. punkpeye PR（流量最大，审核可能排队，先发）
+2. 官方 Registry（审核制，早提交）
+3. wong2 PR → Smithery → Glama → MCP.so/PulseMCP（表单类，10 分钟/个）

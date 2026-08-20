@@ -1,0 +1,23 @@
+# Smithery auto-indexing config (https://smithery.ai)
+# Smithery crawls GitHub for this file to list & run the server.
+# qodercli-mcp is a stdio MCP server launched via npx; no ports.
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      qodercliPath:
+        type: string
+        description: Absolute path to the qodercli binary (optional; defaults to `qodercli` on PATH).
+      defaultPermissionMode:
+        type: string
+        description: Default permission mode when callers omit permission params (dont_ask | accept_edits | bypass_permissions | auto | default).
+  commandFunction: |-
+    ({ config }) => ({
+      command: 'npx',
+      args: ['-y', 'qodercli-mcp'],
+      env: {
+        ...(config.qodercliPath ? { QODERCLI_PATH: config.qodercliPath } : {}),
+        ...(config.defaultPermissionMode ? { QODERCLI_DEFAULT_PERMISSION_MODE: config.defaultPermissionMode } : {}),
+      },
+    })
