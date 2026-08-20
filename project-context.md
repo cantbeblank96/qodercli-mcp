@@ -61,7 +61,7 @@ CN: MCP 服务器、Qoder CLI、AI Agent 委托、子代理、CLI Agent、模型
 | README badges + demo GIF | ✅ done 2026-08-20 |
 | awesome-mcp-servers (punkpeye) | 🟡 PR #12527 submitted 2026-08-20 |
 | awesome-mcp-servers (wong2) | ❌ blocked: fork PRs & issues disabled（2026-08-20 实测）；改走 Phase 3 华语社区直发 |
-| Smithery / Glama / MCP.so / PulseMCP | ⬜ to submit（smithery.yaml 已入库，等爬虫收录） |
+| Smithery / Glama / MCP.so / PulseMCP | Smithery ✅ published（xukaiming1996/qodercli-mcp，MCPB bundle）；Glama ✅ 爬虫自动收录；MCP.so ⬜ 未收录且仅 $39 付费通道，等爬虫；PulseMCP  提交暂停（ingestion 重构），待恢复后重试 |
 | Official MCP Registry | ✅ published 2026-08-20（io.github.cantbeblank96/qodercli-mcp v0.4.3） |
 | Show HN / Reddit / X / Product Hunt | ⬜ scheduled |
 | V2EX / 掘金 / 知乎 / 小红书 | ⬜ scheduled |

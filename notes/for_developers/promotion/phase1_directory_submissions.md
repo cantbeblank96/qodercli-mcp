@@ -30,8 +30,12 @@
 
 ## 3. Smithery（smithery.ai）
 
-- 仓库根目录已放 `smithery.yaml`（stdio + npx 启动），爬虫会自动收录；
-- 若未自动出现：到 smithery.ai 用 GitHub 仓库 URL 手动提交（Submit a Server）。
+- ✅ **2026-08-20 已发布：https://smithery.ai/servers/xukaiming1996/qodercli-mcp**
+- 路径：stdio 服务器走 **MCPB bundle**（URL 通道只收远程 HTTP server）。
+  流程：`npx -y @smithery/cli auth login`（浏览器授权）→ 打包 .mcpb（manifest.json + src + 生产依赖 node_modules）→
+  `npx -y @smithery/cli mcp publish ./qodercli-mcp.mcpb -n xukaiming1996/qodercli-mcp`。
+- manifest 要点：server.type=node，entry_point=src/index.js，mcp_config.command=node、args=["${__dirname}/src/index.js"]。
+- 仓库根目录的 `smithery.yaml` 是旧爬虫格式，新平台已不读；保留无害。
 - 描述文案（280 字符内）：
 
 ```
@@ -40,7 +44,8 @@ MCP server mode for Qoder CLI — delegate coding tasks to a local Qoder agent f
 
 ## 4. Glama（glama.ai/mcp/servers）
 
-- 提交入口：glama.ai/mcp/servers → Submit；GitHub URL 即可，自动验证安装。
+- ✅ **2026-08-20 爬虫自动收录**：https://glama.ai/mcp/servers/cantbeblank96/qodercli-mcp
+  （三工具全列出，分类 Coding Agents / Developer Tools，MIT）——无需手动提交。
 - Short description：
 
 ```
@@ -51,7 +56,9 @@ Wraps qodercli (Qoder CLI) as an MCP server: any MCP client can delegate coding 
 
 ## 5. MCP.so / PulseMCP（pulsemcp.com）
 
-- 均为表单提交（GitHub URL + npm URL + 简介）。简介通用版：
+- MCP.so：2026-08-20 未收录；Submit 表单**仅 $39 付费通道**（无免费按钮），不花钱，等其 GitHub 爬虫自然收录。
+- PulseMCP：2026-08-20 官网公告**提交暂停**（ingestion 重构，“until mid-August” 仍未恢复），搜索 0 结果；恢复后重试。
+- 简介通用版（恢复后用）：
 
 ```
 qodercli-mcp is the missing MCP server mode for Qoder CLI. It exposes three tools —
